@@ -1,0 +1,5 @@
+npx web-ext run --target=firefox-android --android-device=ydx87dciuc59ztea --source-dir ./build/firefox-mv3-dev
+
+
+
+npx web-ext run --target=firefox-android --android-device=ydx87dciuc59ztea --source-dir ./build/firefox-mv3-prod
