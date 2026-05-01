@@ -1,13 +1,13 @@
 export interface Theme {
   id: string
   name: string
-  board: {
+  board?: {
     type: "color" | "image"
     value?: string
     lightSquare?: string
     darkSquare?: string
   }
-  pieces: {
+  pieces?: {
     baseUrl: string
     extension: string
     case: "upper" | "lower"

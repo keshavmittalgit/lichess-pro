@@ -10,3 +10,5 @@ export const THEMES: Theme[] = [
   GreenBoardTheme,
   PureWhiteTheme
 ]
+
+// Forced HMR update for THEMES array

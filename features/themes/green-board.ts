@@ -15,6 +15,6 @@ export const GreenBoardTheme: Theme = {
   },
   coords: {
     light: "#769656",
-    dark: "#eeeed2"
+    dark: "#fff"
   }
 }

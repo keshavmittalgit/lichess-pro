@@ -14,12 +14,10 @@ export const initTheme = async () => {
   const themeId = result.themeId || "default"
   const theme = THEMES.find((t) => t.id === themeId) || THEMES[0]
 
-  // If we don't need a theme or loading screen, reveal immediately and exit
+  // Always apply/update theme state to prevent "ghost" themes from persisting during SPA navigation
+  applyTheme(theme)
+
   if (!isBoardPage || theme.id === "default") {
-    // If we're on default theme, ensure any previous custom theme is removed
-    if (theme.id === "default") {
-      applyTheme(theme)
-    }
     document.documentElement.classList.add("theme-loaded")
     return
   }

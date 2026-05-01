@@ -12,14 +12,14 @@ export function applyTheme(theme: Theme) {
   const colors = ["white", "black"]
   
   let pieceCSS = ""
-  if (theme.pieces.baseUrl) {
+  if (theme.pieces?.baseUrl) {
     pieces.forEach(piece => {
       colors.forEach(color => {
         const colorChar = color === "white" ? "w" : "b"
         let pieceChar = piece[0]
         if (piece === "knight") pieceChar = "n"
-        let finalPieceKey = theme.pieces.case === "upper" ? `${colorChar}${pieceChar.toUpperCase()}` : `${colorChar}${pieceChar.toLowerCase()}`
-        const pieceUrl = `${theme.pieces.baseUrl}${finalPieceKey}.${theme.pieces.extension}`
+        let finalPieceKey = theme.pieces!.case === "upper" ? `${colorChar}${pieceChar.toUpperCase()}` : `${colorChar}${pieceChar.toLowerCase()}`
+        const pieceUrl = `${theme.pieces!.baseUrl}${finalPieceKey}.${theme.pieces!.extension}`
         
         pieceCSS += `
           .cg-wrap piece.${piece}.${color}, cg-board piece.${piece}.${color}, #promotion-choice piece.${piece}.${color} {
@@ -31,7 +31,7 @@ export function applyTheme(theme: Theme) {
   }
 
   let boardCSS = ""
-  if (theme.board.type === "image") {
+  if (theme.board?.type === "image") {
     boardCSS = `
       cg-board { 
         background-image: url("${theme.board.value}") !important; 
@@ -40,7 +40,7 @@ export function applyTheme(theme: Theme) {
       }
       cg-board square { background: none !important; }
     `
-  } else {
+  } else if (theme.board) {
     const light = theme.board.lightSquare || "#f0d9b5", dark = theme.board.darkSquare || "#b58863"
     boardCSS = `
       cg-board { 
@@ -53,16 +53,14 @@ export function applyTheme(theme: Theme) {
     `
   }
 
-  const coordLight = theme.coords?.light || "#fff"
-  const coordDark = theme.coords?.dark || "#769656"
+  const coordLight = theme.coords?.light || (theme.id === "pure-white" ? "#000000" : "#fff")
+  const coordDark = theme.coords?.dark || (theme.id === "pure-white" ? "#555555" : "#769656")
 
   const css = `
     ${pieceCSS}
     ${boardCSS}
-    .cg-wrap coords { opacity: 1 !important; z-index: 10 !important; pointer-events: none !important; }
-    .cg-wrap coords coord { font-weight: bold !important; }
-    .cg-wrap coords .coord-light { color: ${coordLight} !important; }
-    .cg-wrap coords .coord-dark { color: ${coordDark} !important; }
+    .cg-wrap coords coord.coord-light { color: ${coordLight} !important; }
+    .cg-wrap coords coord.coord-dark { color: ${coordDark} !important; }
     
     /* Move ranks (1-8) to the right side */
     .cg-wrap coords.ranks { 
