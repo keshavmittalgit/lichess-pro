@@ -1,6 +1,12 @@
 import { THEMES, type Theme } from "../../constants/themes"
 
 export function applyTheme(theme: Theme) {
+  if (theme.id === "default") {
+    const styleEl = document.getElementById("lichess-pro-theme")
+    if (styleEl) styleEl.remove()
+    return
+  }
+
   const pieces = ["pawn", "knight", "bishop", "rook", "queen", "king"]
   const colors = ["white", "black"]
   

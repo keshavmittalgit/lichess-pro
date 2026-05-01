@@ -24,8 +24,9 @@ function detectPlayerColor(): "white" | "black" | null {
   return cgWrap.classList.contains("orientation-black") ? "black" : "white"
 }
 
-// Handle WebSocket messages
+// Handle WebSocket and Navigation messages
 window.addEventListener("message", (event) => {
+  // Handle WebSocket
   if (event.data?.type === "LICHESS_WS") {
     const data = event.data.data
 
@@ -38,7 +39,6 @@ window.addEventListener("message", (event) => {
       const newPly = data.d?.ply
       if (newPly !== undefined && newPly !== currentPly) {
         currentPly = newPly
-        // Clear overlays on new move
         const overlay = document.getElementById("lichess-analysis-overlay")
         if (overlay) overlay.innerHTML = ""
         const pocketOverlay = document.getElementById("lichess-pocket-overlay")
@@ -58,17 +58,22 @@ window.addEventListener("message", (event) => {
       currentPly = -1
     }
   }
+
+  // Handle SPA Navigation from Interceptor
+  if (event.data?.type === "LICHESS_NAV") {
+    console.log("📍 SPA Navigation detected, re-initializing...")
+    initTheme()
+    // Reset internal state for new game
+    gameStarted = false
+    playerColor = null
+    currentPly = -1
+    // Dispatch event for React to clear state
+    window.dispatchEvent(new CustomEvent("lichess-nav-reset"))
+  }
 })
 
 // Early theme initialization
 initTheme()
-
-// SPA Navigation detection
-const handleNavigation = () => {
-  console.log("📍 Navigation detected, re-initializing theme...")
-  initTheme()
-}
-window.addEventListener("popstate", handleNavigation)
 
 export default function Content() {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null)
@@ -93,8 +98,21 @@ export default function Content() {
       }
     }
 
+    const handleNavReset = () => {
+      setAnalysisData(null)
+      localStorage.removeItem("lichess-analysis-data")
+      // Clear existing UI elements
+      const els = ["eval-bar-container", "win-percent-display", "lichess-analysis-overlay", "arrow-toggle-container"]
+      els.forEach(id => document.getElementById(id)?.remove())
+    }
+
     chrome.runtime.onMessage.addListener(messageListener)
-    return () => chrome.runtime.onMessage.removeListener(messageListener)
+    window.addEventListener("lichess-nav-reset", handleNavReset)
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(messageListener)
+      window.removeEventListener("lichess-nav-reset", handleNavReset)
+    }
   }, [])
 
   // 2. Listeners: Resize & Storage
@@ -103,6 +121,7 @@ export default function Content() {
       if (changes.themeId) {
         const theme = THEMES.find(t => t.id === changes.themeId.newValue) || THEMES[0]
         applyTheme(theme)
+        setResizeCounter(c => c + 1) // Force UI update
       }
     }
     const handleResize = () => setResizeCounter(c => c + 1)
@@ -115,7 +134,7 @@ export default function Content() {
     }
   }, [])
 
-  // 3. Move List Watcher (to clear data when game is reset)
+  // 3. Move List Watcher
   useEffect(() => {
     const checkMoveList = () => {
       const moveList = document.querySelector("rm6")
@@ -134,7 +153,7 @@ export default function Content() {
     }
   }, [])
 
-  // 4. Update Main Display: Eval Bar, Arrows, Win Percent
+  // 4. Update Main Display
   useEffect(() => {
     const board = document.querySelector("cg-board")
     if (!board) return
@@ -169,7 +188,7 @@ export default function Content() {
       whiteBar.style.height = `${evalBarPercent}%`
     }
 
-    // --- Win Percent / Score Display ---
+    // --- Win Percent Display ---
     let winDisplay = document.getElementById("win-percent-display")
     if (!winDisplay) {
       winDisplay = document.createElement("div")
@@ -186,11 +205,8 @@ export default function Content() {
         const cp = analysisData.score_cp
         text = cp > 0 ? `W+${(cp/100).toFixed(1)}` : `B+${Math.abs(cp/100).toFixed(1)}`
       }
-      
-      // Promotion piece indicator
       if (analysisData.best_move?.length === 5 && !analysisData.best_move.includes("@")) {
-        const promo = analysisData.best_move[4].toUpperCase()
-        text += `  ➔ ${promo}`
+        text += `  ➔ ${analysisData.best_move[4].toUpperCase()}`
       }
       winDisplay.textContent = text
     } else {
@@ -208,20 +224,12 @@ export default function Content() {
     const bestMove = analysisData.best_move
     if (bestMove.length !== 5 || bestMove.includes("@")) return
 
-    const promoPiece = bestMove[4].toLowerCase()
-    const pieceMap: Record<string, string> = { q: "queen", r: "rook", b: "bishop", n: "knight" }
-    const role = pieceMap[promoPiece]
+    const role = { q: "queen", r: "rook", b: "bishop", n: "knight" }[bestMove[4].toLowerCase()]
     if (!role) return
 
     const observer = new MutationObserver(() => {
-      const menu = document.getElementById("promotion-choice")
-      if (menu) {
-        const target = menu.querySelector(`piece.${role}`)
-        if (target) {
-          const square = target.closest("square")
-          if (square) square.classList.add("promotion-highlight")
-        }
-      }
+      const target = document.getElementById("promotion-choice")?.querySelector(`piece.${role}`)
+      if (target) target.closest("square")?.classList.add("promotion-highlight")
     })
 
     observer.observe(document.body, { childList: true, subtree: true })

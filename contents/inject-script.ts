@@ -26,9 +26,6 @@ console.log("Interceptor script is working")
     socket.addEventListener("message", (event) => {
       try {
         const data = JSON.parse(event.data)
-        // Log everything for debug in Main World console
-        console.log("📨 WS:", data)
-
         // Forward data to Isolated World content script
         window.postMessage(
           {
@@ -50,8 +47,26 @@ console.log("Interceptor script is working")
   // @ts-ignore (set name for the guard)
   Object.defineProperty(window.WebSocket, "name", { value: "WebSocketProxy" })
 
-  console.log("Main world interceptor active (via Plasmo)")
+  // --- SPA Navigation Interception ---
+  const handleUrlChange = () => {
+    window.postMessage({ type: "LICHESS_NAV" }, "*")
+  }
 
-  // Let's also log to verify this script is running in the page's window
-  console.log("Window Origin:", window.location.origin)
+  const originalPushState = history.pushState
+  history.pushState = function (...args) {
+    const result = originalPushState.apply(this, args)
+    handleUrlChange()
+    return result
+  }
+
+  const originalReplaceState = history.replaceState
+  history.replaceState = function (...args) {
+    const result = originalReplaceState.apply(this, args)
+    handleUrlChange()
+    return result
+  }
+
+  window.addEventListener("popstate", handleUrlChange)
+
+  console.log("Main world interceptor and navigation watcher active")
 })()

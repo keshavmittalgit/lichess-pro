@@ -16,9 +16,14 @@ export const initTheme = async () => {
 
   // If we don't need a theme or loading screen, reveal immediately and exit
   if (!isBoardPage || theme.id === "default") {
+    // If we're on default theme, ensure any previous custom theme is removed
+    if (theme.id === "default") {
+      applyTheme(theme)
+    }
     document.documentElement.classList.add("theme-loaded")
     return
   }
+
 
   // Prevent multiple loaders
   if (document.getElementById("lichess-pro-loader")) return
