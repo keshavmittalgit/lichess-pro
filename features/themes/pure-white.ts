@@ -11,6 +11,10 @@ export const PureWhiteTheme: Theme = {
   pieces: {
     baseUrl: "https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/",
     extension: "svg",
-    case: "lower"
+    case: "upper"
+  },
+  coords: {
+    light: "#000000",
+    dark: "#555555"
   }
 }

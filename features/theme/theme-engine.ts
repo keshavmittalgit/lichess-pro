@@ -2,30 +2,33 @@ import { THEMES, type Theme } from "../../constants/themes"
 
 export function applyTheme(theme: Theme) {
   if (theme.id === "default") {
-    const styleEl = document.getElementById("lichess-pro-theme")
-    if (styleEl) styleEl.remove()
+    const styleEls = document.querySelectorAll("#lichess-pro-theme")
+    styleEls.forEach(el => el.remove())
     return
   }
+
 
   const pieces = ["pawn", "knight", "bishop", "rook", "queen", "king"]
   const colors = ["white", "black"]
   
   let pieceCSS = ""
-  pieces.forEach(piece => {
-    colors.forEach(color => {
-      const colorChar = color === "white" ? "w" : "b"
-      let pieceChar = piece[0]
-      if (piece === "knight") pieceChar = "n"
-      let finalPieceKey = theme.pieces.case === "upper" ? `${colorChar}${pieceChar.toUpperCase()}` : `${colorChar}${pieceChar.toLowerCase()}`
-      const pieceUrl = `${theme.pieces.baseUrl}${finalPieceKey}.${theme.pieces.extension}`
-      
-      pieceCSS += `
-        .cg-wrap piece.${piece}.${color}, cg-board piece.${piece}.${color}, #promotion-choice piece.${piece}.${color} {
-          background-image: url("${pieceUrl}") !important;
-        }
-      `
+  if (theme.pieces.baseUrl) {
+    pieces.forEach(piece => {
+      colors.forEach(color => {
+        const colorChar = color === "white" ? "w" : "b"
+        let pieceChar = piece[0]
+        if (piece === "knight") pieceChar = "n"
+        let finalPieceKey = theme.pieces.case === "upper" ? `${colorChar}${pieceChar.toUpperCase()}` : `${colorChar}${pieceChar.toLowerCase()}`
+        const pieceUrl = `${theme.pieces.baseUrl}${finalPieceKey}.${theme.pieces.extension}`
+        
+        pieceCSS += `
+          .cg-wrap piece.${piece}.${color}, cg-board piece.${piece}.${color}, #promotion-choice piece.${piece}.${color} {
+            background-image: url("${pieceUrl}") !important;
+          }
+        `
+      })
     })
-  })
+  }
 
   let boardCSS = ""
   if (theme.board.type === "image") {
@@ -42,7 +45,7 @@ export function applyTheme(theme: Theme) {
     boardCSS = `
       cg-board { 
         background-color: ${dark} !important;
-        background-image: conic-gradient(${light} 90deg, ${dark} 90deg 180deg, ${light} 180deg 270deg, ${dark} 270deg) !important; 
+        background-image: conic-gradient(${dark} 90deg, ${light} 90deg 180deg, ${dark} 180deg 270deg, ${light} 270deg) !important; 
         background-size: 25% 25% !important; 
         background-repeat: repeat !important; 
       }
@@ -50,13 +53,16 @@ export function applyTheme(theme: Theme) {
     `
   }
 
+  const coordLight = theme.coords?.light || "#fff"
+  const coordDark = theme.coords?.dark || "#769656"
+
   const css = `
     ${pieceCSS}
     ${boardCSS}
     .cg-wrap coords { opacity: 1 !important; z-index: 10 !important; pointer-events: none !important; }
     .cg-wrap coords coord { font-weight: bold !important; }
-    .cg-wrap coords .coord-light { color: #fff !important; }
-    .cg-wrap coords .coord-dark { color: #769656 !important; }
+    .cg-wrap coords .coord-light { color: ${coordLight} !important; }
+    .cg-wrap coords .coord-dark { color: ${coordDark} !important; }
     
     /* Move ranks (1-8) to the right side */
     .cg-wrap coords.ranks { 
@@ -69,7 +75,14 @@ export function applyTheme(theme: Theme) {
     .cg-wrap::before, .cg-wrap::after, cg-board::before, cg-board::after { display: none !important; }
   `
 
-  let styleEl = document.getElementById("lichess-pro-theme")
+  const styleEls = document.querySelectorAll("#lichess-pro-theme")
+  let styleEl = styleEls.length > 0 ? styleEls[0] : null
+  
+  // Remove any duplicates if they somehow exist
+  for (let i = 1; i < styleEls.length; i++) {
+    styleEls[i].remove()
+  }
+
   if (!styleEl) {
     styleEl = document.createElement("style")
     styleEl.id = "lichess-pro-theme"

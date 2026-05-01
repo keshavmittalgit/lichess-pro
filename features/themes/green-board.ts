@@ -12,5 +12,9 @@ export const GreenBoardTheme: Theme = {
     baseUrl: "https://www.chess.com/chess-themes/pieces/neo/150/",
     extension: "png",
     case: "lower"
+  },
+  coords: {
+    light: "#769656",
+    dark: "#eeeed2"
   }
 }

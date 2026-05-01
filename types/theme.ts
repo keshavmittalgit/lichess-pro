@@ -12,4 +12,8 @@ export interface Theme {
     extension: string
     case: "upper" | "lower"
   }
+  coords?: {
+    light?: string
+    dark?: string
+  }
 }
