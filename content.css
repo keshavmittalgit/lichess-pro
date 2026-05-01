@@ -1,7 +1,20 @@
-#testdiv {
-    position: fixed;
-    top: 4px;
-    right: 4px;
-    z-index: 2147483647;
-    pointer-events: auto;
+/* Hide the board by default to prevent any flashing */
+.cg-wrap, cg-board {
+  opacity: 0 !important;
+}
+
+/* Reveal class to be added by our script */
+html.theme-loaded .cg-wrap, 
+html.theme-loaded cg-board {
+  opacity: 1 !important;
+}
+
+/* Analysis Arrow fix for the loader transition */
+.lichess-pro-arrow-container {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+html.theme-loaded .lichess-pro-arrow-container {
+  opacity: 1;
 }
