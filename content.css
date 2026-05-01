@@ -15,6 +15,21 @@ html.theme-loaded cg-board {
   transition: opacity 0.5s ease;
 }
 
-html.theme-loaded .lichess-pro-arrow-container {
-  opacity: 1;
+
+/* Promotion highlight */
+.promotion-highlight {
+  position: relative;
+}
+
+.promotion-highlight::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 123, 255, 0.3) !important;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
 }

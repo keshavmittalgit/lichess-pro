@@ -20,7 +20,10 @@ export const initTheme = async () => {
     return
   }
 
-  // 1. Create and show loading splash screen ONLY if we are applying a theme
+  // Prevent multiple loaders
+  if (document.getElementById("lichess-pro-loader")) return
+
+  // 1. Create and show loading splash screen
   const loadingOverlay = document.createElement("div")
   loadingOverlay.id = "lichess-pro-loader"
   Object.assign(loadingOverlay.style, {
@@ -42,10 +45,12 @@ export const initTheme = async () => {
 
   // 2. Apply theme and reveal
   applyTheme(theme)
+  
+  // Wait a bit to ensure theme is applied before revealing
   setTimeout(() => {
     document.documentElement.classList.add("theme-loaded")
     loadingOverlay.style.opacity = "0"
     loadingOverlay.style.visibility = "hidden"
     setTimeout(() => loadingOverlay.remove(), 400)
-  }, 200)
+  }, 300)
 }
