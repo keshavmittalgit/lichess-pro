@@ -9,7 +9,7 @@ export const GreenBoardTheme: Theme = {
     darkSquare: "#769656"
   },
   pieces: {
-    baseUrl: "https://www.chess.com/chess-themes/pieces/neo/150/",
+    baseUrl: "local:assets/pieces/neo/",
     extension: "png",
     case: "lower"
   },

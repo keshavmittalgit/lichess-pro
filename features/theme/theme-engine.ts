@@ -16,10 +16,24 @@ export function applyTheme(theme: Theme) {
     pieces.forEach(piece => {
       colors.forEach(color => {
         const colorChar = color === "white" ? "w" : "b"
+        
+        // Use color-specific base URL if provided, otherwise fallback to main baseUrl
+        let currentBaseUrl = theme.pieces!.baseUrl
+        if (color === "white" && theme.pieces?.whiteBaseUrl) {
+          currentBaseUrl = theme.pieces.whiteBaseUrl
+        } else if (color === "black" && theme.pieces?.blackBaseUrl) {
+          currentBaseUrl = theme.pieces.blackBaseUrl
+        }
+
+        const isLocal = currentBaseUrl.startsWith("local:")
+        const resolvedBase = isLocal
+          ? chrome.runtime.getURL(currentBaseUrl.replace("local:", ""))
+          : currentBaseUrl
+
         let pieceChar = piece[0]
         if (piece === "knight") pieceChar = "n"
         let finalPieceKey = theme.pieces!.case === "upper" ? `${colorChar}${pieceChar.toUpperCase()}` : `${colorChar}${pieceChar.toLowerCase()}`
-        const pieceUrl = `${theme.pieces!.baseUrl}${finalPieceKey}.${theme.pieces!.extension}`
+        const pieceUrl = `${resolvedBase}${finalPieceKey}.${theme.pieces!.extension}`
         
         pieceCSS += `
           .cg-wrap piece.${piece}.${color}, cg-board piece.${piece}.${color}, #promotion-choice piece.${piece}.${color} {

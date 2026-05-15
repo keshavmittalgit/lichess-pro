@@ -9,6 +9,8 @@ export interface Theme {
   }
   pieces?: {
     baseUrl: string
+    whiteBaseUrl?: string
+    blackBaseUrl?: string
     extension: string
     case: "upper" | "lower"
   }
@@ -16,4 +18,5 @@ export interface Theme {
     light?: string
     dark?: string
   }
+  thumbnail?: string
 }

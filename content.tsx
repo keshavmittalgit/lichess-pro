@@ -14,8 +14,6 @@ export const config: PlasmoCSConfig = {
 
 // --- Global State ---
 let gameStarted = false
-let playerColor: "white" | "black" | null = null 
-let currentPly = -1 
 
 // --- Helper Functions ---
 function detectPlayerColor(): "white" | "black" | null {
@@ -24,53 +22,93 @@ function detectPlayerColor(): "white" | "black" | null {
   return cgWrap.classList.contains("orientation-black") ? "black" : "white"
 }
 
+function detectGameVariant(): string | null {
+  const setupElement = document.querySelector(".round__side .setup")
+  if (!setupElement) {
+    console.log("🔍 Variant element not found yet...")
+    return null
+  }
+  
+  const text = setupElement.textContent || ""
+  console.log("🔍 Raw setup text:", text)
+  
+  const parts = text.split("•").map(p => p.trim())
+  console.log("🔍 Split parts:", parts)
+  
+  // The variant name is almost always the first part (e.g., "Crazyhouse • 1+0 • Rated")
+  const variant = parts[0]
+  console.log("🔍 Detected variant:", variant)
+
+  if (variant) {
+    chrome.runtime.sendMessage({ type: "SET_VARIANT", variant })
+  }
+  
+  return variant
+}
+
 // Handle WebSocket and Navigation messages
-window.addEventListener("message", (event) => {
-  // Handle WebSocket
-  if (event.data?.type === "LICHESS_WS") {
-    const data = event.data.data
+function setupMessageListeners(
+  setPlayerColor: (c: any) => void, 
+  setCurrentPly: (p: any) => void,
+  setAnalysisData: (d: any) => void
+) {
+  let lastPly = -1
+  const listener = (event: MessageEvent) => {
+    // Handle WebSocket
+    if (event.data?.type === "LICHESS_WS") {
+      const data = event.data.data
 
-    if (data.t === "move" || (data.d?.ply !== undefined && data.d?.ply > 0)) {
-      if (!gameStarted) {
-        gameStarted = true
-        playerColor = detectPlayerColor()
+      if (data.t === "move" || (data.d?.ply !== undefined && data.d?.ply > 0)) {
+        const newPly = data.d?.ply
+        if (newPly !== undefined && newPly !== lastPly) {
+          lastPly = newPly
+          
+          if (!gameStarted) {
+            gameStarted = true
+            const color = detectPlayerColor()
+            setPlayerColor(color)
+            detectGameVariant()
+          }
+
+          // IMMEDIATELY clear old analysis when a move happens
+          setAnalysisData(null)
+          setCurrentPly(newPly)
+          
+          const overlay = document.getElementById("lichess-analysis-overlay")
+          if (overlay) overlay.innerHTML = ""
+          const pocketOverlay = document.getElementById("lichess-pocket-overlay")
+          if (pocketOverlay) pocketOverlay.remove()
+
+          // Only send to engine if it's a new ply
+          chrome.runtime.sendMessage({ type: "LICHESS_MOVE", payload: data })
+        }
       }
 
-      const newPly = data.d?.ply
-      if (newPly !== undefined && newPly !== currentPly) {
-        currentPly = newPly
-        const overlay = document.getElementById("lichess-analysis-overlay")
-        if (overlay) overlay.innerHTML = ""
-        const pocketOverlay = document.getElementById("lichess-pocket-overlay")
-        if (pocketOverlay) pocketOverlay.remove()
-      }
-
-      const currentTurnColor = (data.d?.ply ?? 0) % 2 === 0 ? "white" : "black"
-      if (playerColor === currentTurnColor) {
-        chrome.runtime.sendMessage({ type: "LICHESS_MOVE", payload: data })
+      if (data.t === "endData" || data.t === "end" || data.d?.status) {
+        localStorage.removeItem("lichess-analysis-data")
+        gameStarted = false
+        setPlayerColor(null)
+        setCurrentPly(-1)
+        chrome.runtime.sendMessage({ type: "RESET_ENGINE" })
       }
     }
 
-    if (data.t === "endData" || data.t === "end" || data.d?.status) {
-      localStorage.removeItem("lichess-analysis-data")
+    // Handle SPA Navigation from Interceptor
+    if (event.data?.type === "LICHESS_NAV") {
+      console.log("📍 SPA Navigation detected, re-initializing...")
+      initTheme()
       gameStarted = false
-      playerColor = null
-      currentPly = -1
+      setPlayerColor(null)
+      setCurrentPly(-1)
+      chrome.runtime.sendMessage({ type: "RESET_ENGINE" })
+      window.dispatchEvent(new CustomEvent("lichess-nav-reset"))
+      setTimeout(() => detectGameVariant(), 500)
     }
   }
 
-  // Handle SPA Navigation from Interceptor
-  if (event.data?.type === "LICHESS_NAV") {
-    console.log("📍 SPA Navigation detected, re-initializing...")
-    initTheme()
-    // Reset internal state for new game
-    gameStarted = false
-    playerColor = null
-    currentPly = -1
-    // Dispatch event for React to clear state
-    window.dispatchEvent(new CustomEvent("lichess-nav-reset"))
-  }
-})
+  window.addEventListener("message", listener)
+  return () => window.removeEventListener("message", listener)
+}
 
 // Early theme initialization
 initTheme()
@@ -78,7 +116,13 @@ initTheme()
 export default function Content() {
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null)
   const [showArrows, setShowArrows] = useState(true)
+  const [showPlayerBestMove, setShowPlayerBestMove] = useState(true)
+  const [showOpponentBestMove, setShowOpponentBestMove] = useState(true)
+  const [showAnalysisBar, setShowAnalysisBar] = useState(true)
   const [resizeCounter, setResizeCounter] = useState(0)
+  const [playerColor, setPlayerColor] = useState<"white" | "black" | null>(null)
+  const [currentPly, setCurrentPly] = useState(-1)
+  const [boardExists, setBoardExists] = useState(false)
 
   // 1. Initial Load & Preferences
   useEffect(() => {
@@ -90,6 +134,17 @@ export default function Content() {
       try { setAnalysisData(JSON.parse(savedData)) } 
       catch { localStorage.removeItem("lichess-analysis-data") }
     }
+
+    // Load initial settings from chrome storage
+    chrome.storage.local.get([
+      "showPlayerBestMove", 
+      "showOpponentBestMove", 
+      "showAnalysisBar"
+    ], (result) => {
+      if (result.showPlayerBestMove !== undefined) setShowPlayerBestMove(result.showPlayerBestMove)
+      if (result.showOpponentBestMove !== undefined) setShowOpponentBestMove(result.showOpponentBestMove)
+      if (result.showAnalysisBar !== undefined) setShowAnalysisBar(result.showAnalysisBar)
+    })
 
     const messageListener = (message: any) => {
       if (message.type === "BEST_MOVE") {
@@ -109,10 +164,27 @@ export default function Content() {
     chrome.runtime.onMessage.addListener(messageListener)
     window.addEventListener("lichess-nav-reset", handleNavReset)
 
+    // Initial detection
+    setPlayerColor(detectPlayerColor())
+
+    const cleanupMessages = setupMessageListeners(setPlayerColor, setCurrentPly, setAnalysisData)
+
     return () => {
       chrome.runtime.onMessage.removeListener(messageListener)
       window.removeEventListener("lichess-nav-reset", handleNavReset)
+      cleanupMessages()
     }
+  }, [])
+
+  // Board Presence Watcher
+  useEffect(() => {
+    const checkBoard = () => {
+      const board = document.querySelector("cg-board")
+      setBoardExists(!!board)
+    }
+    const interval = setInterval(checkBoard, 500)
+    checkBoard()
+    return () => clearInterval(interval)
   }, [])
 
   // 2. Listeners: Resize & Storage
@@ -122,6 +194,15 @@ export default function Content() {
         const theme = THEMES.find(t => t.id === changes.themeId.newValue) || THEMES[0]
         applyTheme(theme)
         setResizeCounter(c => c + 1) // Force UI update
+      }
+      if (changes.showPlayerBestMove) setShowPlayerBestMove(changes.showPlayerBestMove.newValue)
+      if (changes.showOpponentBestMove) setShowOpponentBestMove(changes.showOpponentBestMove.newValue)
+      if (changes.showAnalysisBar) {
+        setShowAnalysisBar(changes.showAnalysisBar.newValue)
+        if (!changes.showAnalysisBar.newValue) {
+          document.getElementById("eval-bar-container")?.remove()
+          document.getElementById("win-percent-display")?.remove()
+        }
       }
     }
     const handleResize = () => setResizeCounter(c => c + 1)
@@ -160,63 +241,79 @@ export default function Content() {
 
     // --- Eval Bar ---
     let evalBar = document.getElementById("eval-bar-container")
-    if (!evalBar) {
-      evalBar = document.createElement("div")
-      evalBar.id = "eval-bar-container"
-      const isMobile = window.innerWidth < 768
-      const cgWrap = document.querySelector(".cg-wrap")
-      const isBlack = cgWrap?.classList.contains("orientation-black")
-      
-      evalBar.style.cssText = `
-        position: absolute !important;
-        left: ${isMobile ? "-15px" : "-4px"} !important;
-        top: 0 !important; width: ${isMobile ? "20px" : "6px"} !important; height: 100% !important;
-        background: #000 !important; z-index: 99 !important; pointer-events: none !important;
-        ${isBlack ? "border-top-right-radius: 2px; border-bottom-right-radius: 2px;" : "border-top-left-radius: 2px; border-bottom-left-radius: 2px;"}
-        transform: ${isBlack ? "rotate(180deg)" : "none"} !important;
-      `
-      const whiteBar = document.createElement("div")
-      whiteBar.id = "eval-bar-white"
-      whiteBar.style.cssText = "position:absolute; bottom:0; width:100%; background:#fff; transition:height 0.3s ease; height:50%;"
-      evalBar.appendChild(whiteBar)
-      board.appendChild(evalBar)
-    }
+    if (!showAnalysisBar) {
+      evalBar?.remove()
+    } else {
+      if (!evalBar) {
+        evalBar = document.createElement("div")
+        evalBar.id = "eval-bar-container"
+        const isMobile = window.innerWidth < 768
+        const cgWrap = document.querySelector(".cg-wrap")
+        const isBlack = cgWrap?.classList.contains("orientation-black")
+        
+        evalBar.style.cssText = `
+          position: absolute !important;
+          left: ${isMobile ? "-15px" : "-4px"} !important;
+          top: 0 !important; width: ${isMobile ? "20px" : "6px"} !important; height: 100% !important;
+          background: #000 !important; z-index: 99 !important; pointer-events: none !important;
+          ${isBlack ? "border-top-right-radius: 2px; border-bottom-right-radius: 2px;" : "border-top-left-radius: 2px; border-bottom-left-radius: 2px;"}
+          transform: ${isBlack ? "rotate(180deg)" : "none"} !important;
+        `
+        const whiteBar = document.createElement("div")
+        whiteBar.id = "eval-bar-white"
+        whiteBar.style.cssText = "position:absolute; bottom:0; width:100%; background:#fff; transition:height 0.3s ease; height:50%;"
+        evalBar.appendChild(whiteBar)
+        board.appendChild(evalBar)
+      }
 
-    const whiteBar = document.getElementById("eval-bar-white")
-    if (whiteBar) {
-      const { evalBarPercent } = analysisData ? calculateEvaluation(analysisData) : { evalBarPercent: 50 }
-      whiteBar.style.height = `${evalBarPercent}%`
+      const whiteBar = document.getElementById("eval-bar-white")
+      if (whiteBar && analysisData) {
+        const { evalBarPercent } = calculateEvaluation(analysisData)
+        whiteBar.style.height = `${evalBarPercent}%`
+      }
     }
 
     // --- Win Percent Display ---
     let winDisplay = document.getElementById("win-percent-display")
-    if (!winDisplay) {
-      winDisplay = document.createElement("div")
-      winDisplay.id = "win-percent-display"
-      winDisplay.style.cssText = "position:absolute; top:-12px; left:50%; transform:translateX(-50%); z-index:99; color:white; font-size:12px; font-weight:600; text-shadow:0 1px 3px #000; pointer-events:none; white-space:nowrap;"
-      board.appendChild(winDisplay)
-    }
-
-    if (analysisData) {
-      let text = ""
-      if (analysisData.score_mate !== null) {
-        text = `${analysisData.score_mate > 0 ? "W" : "B"}-M${Math.abs(analysisData.score_mate)}`
-      } else if (analysisData.score_cp !== null) {
-        const cp = analysisData.score_cp
-        text = cp > 0 ? `W+${(cp/100).toFixed(1)}` : `B+${Math.abs(cp/100).toFixed(1)}`
-      }
-      if (analysisData.best_move?.length === 5 && !analysisData.best_move.includes("@")) {
-        text += `  ➔ ${analysisData.best_move[4].toUpperCase()}`
-      }
-      winDisplay.textContent = text
+    if (!showAnalysisBar) {
+      winDisplay?.remove()
     } else {
-      winDisplay.textContent = ""
+      if (!winDisplay) {
+        winDisplay = document.createElement("div")
+        winDisplay.id = "win-percent-display"
+        winDisplay.style.cssText = "position:absolute; top:-12px; left:50%; transform:translateX(-50%); z-index:99; color:white; font-size:12px; font-weight:600; text-shadow:0 1px 3px #000; pointer-events:none; white-space:nowrap;"
+        board.appendChild(winDisplay)
+      }
+
+      if (analysisData) {
+        let text = ""
+        if (analysisData.score_mate !== null) {
+          text = `${analysisData.score_mate > 0 ? "W" : "B"}-M${Math.abs(analysisData.score_mate)}`
+        } else if (analysisData.score_cp !== null) {
+          const cp = analysisData.score_cp
+          text = cp > 0 ? `W+${(cp/100).toFixed(1)}` : `B+${Math.abs(cp/100).toFixed(1)}`
+        }
+        if (analysisData.best_move?.length === 5 && !analysisData.best_move.includes("@")) {
+          text += `  ➔ ${analysisData.best_move[4].toUpperCase()}`
+        }
+        winDisplay.textContent = text
+      } else {
+        winDisplay.textContent = ""
+      }
     }
 
     // --- Arrows ---
-    drawBestMove(analysisData, showArrows)
+    const currentTurnColor = (currentPly >= 0 ? currentPly : 0) % 2 === 0 ? "white" : "black"
+    const isPlayerTurn = playerColor === currentTurnColor
+    
+    const shouldShowArrows = showArrows && (
+      (isPlayerTurn && showPlayerBestMove) || 
+      (!isPlayerTurn && showOpponentBestMove)
+    )
 
-  }, [analysisData, showArrows, resizeCounter])
+    drawBestMove(analysisData, shouldShowArrows)
+
+  }, [analysisData, showArrows, showPlayerBestMove, showOpponentBestMove, showAnalysisBar, resizeCounter, playerColor, currentPly, boardExists])
 
   // 5. Promotion Highlighting
   useEffect(() => {
@@ -232,7 +329,10 @@ export default function Content() {
       if (target) target.closest("square")?.classList.add("promotion-highlight")
     })
 
-    observer.observe(document.body, { childList: true, subtree: true })
+    const targetNode = document.body || document.documentElement
+    if (targetNode) {
+      observer.observe(targetNode, { childList: true, subtree: true })
+    }
     return () => observer.disconnect()
   }, [analysisData, showArrows])
 

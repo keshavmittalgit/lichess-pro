@@ -16,10 +16,6 @@ html.theme-loaded cg-board {
 }
 
 
-/* Promotion highlight */
-.promotion-highlight {
-  position: relative;
-}
 
 .promotion-highlight::after {
   content: "";

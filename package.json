@@ -32,18 +32,33 @@
     "typescript": "5.3.3"
   },
   "manifest": {
+    "cross_origin_embedder_policy": {
+      "value": "require-corp"
+    },
+    "cross_origin_opener_policy": {
+      "value": "same-origin"
+    },
     "host_permissions": [
       "https://*/*"
     ],
     "permissions": [
       "scripting",
-      "storage"
+      "storage",
+      "offscreen"
     ],
-    "content_security_policy": {},
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval' http://localhost:*; object-src 'self'"
+    },
     "web_accessible_resources": [
       {
         "resources": [
-          "inject-script.*.js"
+          "inject-script.*.js",
+          "assets/pieces/neo/*.png",
+          "assets/pieces/white-custom/*.png",
+          "assets/pieces/spice/*.png",
+          "assets/stockfish.wasm",
+          "assets/stockfish.js",
+          "assets/stockfish.worker.js"
         ],
         "matches": [
           "https://lichess.org/*"

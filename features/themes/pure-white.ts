@@ -9,9 +9,9 @@ export const PureWhiteTheme: Theme = {
     darkSquare: "#e8edf0"
   },
   pieces: {
-    baseUrl: "https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/",
-    extension: "svg",
-    case: "upper"
+    baseUrl: "local:assets/pieces/spice/",
+    extension: "png",
+    case: "lower"
   },
   coords: {
     light: "#000000",

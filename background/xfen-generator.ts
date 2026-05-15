@@ -60,9 +60,10 @@ function getEnPassantTarget(uci: string, san: string): string {
   return "-"
 }
 
-export function getCrazyhouseFen(msg: LichessMsg): string {
+export function generateXFen(msg: LichessMsg, variant: string = "chess"): string {
   const data = msg.d
   let fen = data.fen
+  const isCrazyhouse = variant.toLowerCase().includes("crazyhouse")
 
   // 1. Build the Pocket String [NNpp...]
   let pocketString = ""
@@ -93,7 +94,7 @@ export function getCrazyhouseFen(msg: LichessMsg): string {
     pocketString += processPocket(blackPocketObj, false)
   }
 
-  const finalPocket = `[${pocketString}]`
+  const finalPocket = (isCrazyhouse || pocketString.length > 0) ? `[${pocketString}]` : ""
 
   // 2. Determine Turn (White or Black)
   const turnColor = data.ply % 2 === 0 ? "w" : "b"
@@ -105,18 +106,19 @@ export function getCrazyhouseFen(msg: LichessMsg): string {
 
   // 4. Assemble the Final X-FEN
   if (fen.includes(" ")) {
-    // If Lichess sent a full FEN, we inject the pocket into the first part
-    const parts = fen.split(" ")
-    parts[0] = parts[0] + finalPocket
-    // We can also update the move number if needed, but usually we just use what Lichess sent
-    return parts.join(" ")
+    // If Lichess sent a full FEN
+    if (finalPocket) {
+      const parts = fen.split(" ")
+      parts[0] = parts[0] + finalPocket
+      return parts.join(" ")
+    }
+    return fen
   } else {
     // Construct the standard FEN format
-
-    // Calculate En Passant Target
     const enPassantTarget = getEnPassantTarget(data.uci, data.san)
 
     // Format: [Board+Pocket] [Turn] [Castling] [EnPassant] [HalfMove] [FullMove]
-    return `${fen}${finalPocket} ${turnColor} KQkq ${enPassantTarget} 0 ${fullMoveNumber}`
+    const castlingRights = "-" 
+    return `${fen}${finalPocket} ${turnColor} ${castlingRights} ${enPassantTarget} 0 ${fullMoveNumber}`
   }
 }

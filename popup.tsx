@@ -9,14 +9,29 @@ export default function Popup() {
   const [activeThemeId, setActiveThemeId] = useState("default")
   const [isLoaded, setIsLoaded] = useState(false)
   const [activeTab, setActiveTab] = useState<"engine" | "themes">("engine")
+  
+  // New settings
+  const [showPlayerBestMove, setShowPlayerBestMove] = useState(true)
+  const [showOpponentBestMove, setShowOpponentBestMove] = useState(true)
+  const [showAnalysisBar, setShowAnalysisBar] = useState(true)
 
   // Load settings from storage on mount
   useEffect(() => {
     const loadSettings = async () => {
-      const result = await chrome.storage.local.get(["depth", "time", "themeId"])
+      const result = await chrome.storage.local.get([
+        "depth", 
+        "time", 
+        "themeId",
+        "showPlayerBestMove",
+        "showOpponentBestMove",
+        "showAnalysisBar"
+      ])
       if (result.depth !== undefined) setDepth(result.depth)
       if (result.time !== undefined) setTime(result.time)
       if (result.themeId !== undefined) setActiveThemeId(result.themeId)
+      if (result.showPlayerBestMove !== undefined) setShowPlayerBestMove(result.showPlayerBestMove)
+      if (result.showOpponentBestMove !== undefined) setShowOpponentBestMove(result.showOpponentBestMove)
+      if (result.showAnalysisBar !== undefined) setShowAnalysisBar(result.showAnalysisBar)
       setIsLoaded(true)
     }
     loadSettings()
@@ -35,6 +50,17 @@ export default function Popup() {
       chrome.storage.local.set({ time })
     }
   }, [time, isLoaded])
+
+  // Save new settings to storage
+  useEffect(() => {
+    if (isLoaded) {
+      chrome.storage.local.set({ 
+        showPlayerBestMove, 
+        showOpponentBestMove, 
+        showAnalysisBar 
+      })
+    }
+  }, [showPlayerBestMove, showOpponentBestMove, showAnalysisBar, isLoaded])
 
   // Save theme to storage
   const handleThemeSelect = (themeId: string) => {
@@ -139,6 +165,60 @@ export default function Popup() {
                   className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider"
                 />
               </div>
+
+              {/* Best Move Checkboxes */}
+              <div className="space-y-4 pt-2 border-t border-zinc-800/50">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium" style={{ color: "#f0d9b5", opacity: 0.85 }}>
+                    Player Best Move
+                  </label>
+                  <button
+                    onClick={() => setShowPlayerBestMove(!showPlayerBestMove)}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
+                      showPlayerBestMove ? "bg-amber-600" : "bg-zinc-700"
+                    }`}>
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        showPlayerBestMove ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium" style={{ color: "#f0d9b5", opacity: 0.85 }}>
+                    Opponent Best Move
+                  </label>
+                  <button
+                    onClick={() => setShowOpponentBestMove(!showOpponentBestMove)}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
+                      showOpponentBestMove ? "bg-amber-600" : "bg-zinc-700"
+                    }`}>
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        showOpponentBestMove ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium" style={{ color: "#f0d9b5", opacity: 0.85 }}>
+                    Analysis Bar & Score
+                  </label>
+                  <button
+                    onClick={() => setShowAnalysisBar(!showAnalysisBar)}
+                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${
+                      showAnalysisBar ? "bg-amber-600" : "bg-zinc-700"
+                    }`}>
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        showAnalysisBar ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -153,7 +233,7 @@ export default function Popup() {
                     : "border-zinc-800 hover:border-zinc-600"
                 }`}>
                 <img
-                  src={theme.thumbnail}
+                  src={theme.thumbnail || "https://images.unsplash.com/photo-1529367848443-155184b857e5?q=80&w=400&auto=format&fit=crop"}
                   alt={theme.name}
                   className="w-full h-24 object-cover"
                 />
