@@ -85,6 +85,28 @@ export function applyTheme(theme: Theme) {
     cg-board { background-color: transparent !important; }
     .cg-wrap, .cg-container { background-image: none !important; }
     .cg-wrap::before, .cg-wrap::after, cg-board::before, cg-board::after { display: none !important; }
+
+    ${theme.background ? `
+      body {
+        background-color: ${theme.background} !important;
+        background-image: none !important;
+      }
+    ` : ""}
+
+    ${theme.board?.highlight ? `
+      .cg-wrap .last-move {
+        background-color: ${theme.board.highlight}80 !important; 
+      }
+      .cg-wrap .selected {
+        background-color: ${theme.board.highlight}a0 !important;
+      }
+      .cg-wrap .move-dest {
+        background: radial-gradient(rgba(0, 0, 0, 0.15) 19%, rgba(0, 0, 0, 0) 20%) !important;
+      }
+      .cg-wrap .move-dest.oc {
+        border: 0.125em solid rgba(0, 0, 0, 0.15) !important;
+      }
+    ` : ""}
   `
 
   const styleEls = document.querySelectorAll("#lichess-pro-theme")

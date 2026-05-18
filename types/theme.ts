@@ -6,6 +6,7 @@ export interface Theme {
     value?: string
     lightSquare?: string
     darkSquare?: string
+    highlight?: string
   }
   pieces?: {
     baseUrl: string
@@ -19,4 +20,5 @@ export interface Theme {
     dark?: string
   }
   thumbnail?: string
+  background?: string
 }

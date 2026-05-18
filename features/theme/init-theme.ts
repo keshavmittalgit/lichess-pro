@@ -1,4 +1,4 @@
-import { THEMES } from "../../constants/themes"
+import { THEMES, resolveTheme } from "../../constants/themes"
 import { applyTheme } from "./theme-engine"
 
 export const initTheme = async () => {
@@ -10,9 +10,9 @@ export const initTheme = async () => {
                       !path.startsWith("/broadcast") &&
                       !path.startsWith("/player")
 
-  const result = await chrome.storage.local.get(["themeId"])
+  const result = await chrome.storage.local.get(["themeId", "customBoardId", "customPieceId", "customBackgroundId"])
   const themeId = result.themeId || "default"
-  const theme = THEMES.find((t) => t.id === themeId) || THEMES[0]
+  const theme = resolveTheme(themeId, result.customBoardId, result.customPieceId, result.customBackgroundId)
 
   // Always apply/update theme state to prevent "ghost" themes from persisting during SPA navigation
   applyTheme(theme)

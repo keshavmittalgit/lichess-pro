@@ -3,8 +3,10 @@ export interface LichessMsg {
   d: {
     fen: string
     ply: number
-    uci: string // Required for En Passant calculation
-    san: string // Required to identify if it's a pawn
+    uci: string
+    san: string
+    moves?: string // Full move history string from Lichess
+    initialFen?: string // Starting FEN for variants/960
     crazyhouse?: {
       pockets: Array<Record<string, number>>
     }
@@ -60,7 +62,11 @@ function getEnPassantTarget(uci: string, san: string): string {
   return "-"
 }
 
-export function generateXFen(msg: LichessMsg, variant: string = "chess"): string {
+export function generateXFen(
+  msg: LichessMsg, 
+  variant: string = "chess",
+  castling: string = "KQkq"
+): string {
   const data = msg.d
   let fen = data.fen
   const isCrazyhouse = variant.toLowerCase().includes("crazyhouse")
@@ -118,7 +124,6 @@ export function generateXFen(msg: LichessMsg, variant: string = "chess"): string
     const enPassantTarget = getEnPassantTarget(data.uci, data.san)
 
     // Format: [Board+Pocket] [Turn] [Castling] [EnPassant] [HalfMove] [FullMove]
-    const castlingRights = "-" 
-    return `${fen}${finalPocket} ${turnColor} ${castlingRights} ${enPassantTarget} 0 ${fullMoveNumber}`
+    return `${fen}${finalPocket} ${turnColor} ${castling} ${enPassantTarget} 0 ${fullMoveNumber}`
   }
 }

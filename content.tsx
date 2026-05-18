@@ -1,6 +1,6 @@
 import type { PlasmoCSConfig } from "plasmo"
 import { useEffect, useState, useCallback } from "react"
-import { THEMES, type Theme } from "~constants/themes"
+import { THEMES, type Theme, resolveTheme } from "~constants/themes"
 import "./content.css"
 import { initTheme } from "~features/theme/init-theme"
 import { applyTheme } from "~features/theme/theme-engine"
@@ -190,10 +190,18 @@ export default function Content() {
   // 2. Listeners: Resize & Storage
   useEffect(() => {
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
-      if (changes.themeId) {
-        const theme = THEMES.find(t => t.id === changes.themeId.newValue) || THEMES[0]
-        applyTheme(theme)
-        setResizeCounter(c => c + 1) // Force UI update
+      if (
+        changes.themeId || 
+        changes.customBoardId || 
+        changes.customPieceId || 
+        changes.customBackgroundId
+      ) {
+        chrome.storage.local.get(["themeId", "customBoardId", "customPieceId", "customBackgroundId"], (result) => {
+          const themeId = result.themeId || "default"
+          const theme = resolveTheme(themeId, result.customBoardId, result.customPieceId, result.customBackgroundId)
+          applyTheme(theme)
+          setResizeCounter(c => c + 1) // Force UI update
+        })
       }
       if (changes.showPlayerBestMove) setShowPlayerBestMove(changes.showPlayerBestMove.newValue)
       if (changes.showOpponentBestMove) setShowOpponentBestMove(changes.showOpponentBestMove.newValue)

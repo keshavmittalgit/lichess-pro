@@ -120,7 +120,7 @@ export default function OffscreenPage() {
         const fenParts = message.fen.split(" ")
         turnRef.current = fenParts.length > 1 ? fenParts[1] : "w"
 
-        console.log(`🔍 Analyzing FEN (depth ${searchDepth}, time ${searchTimeMs}ms, turn ${turnRef.current}):`, message.fen)
+        console.log(`🔍 Analyzing (depth ${searchDepth}, time ${searchTimeMs}ms, turn ${turnRef.current})`)
         
         currentAnalysisRef.current = {
           best_move: "",
