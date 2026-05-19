@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { resolveTheme, THEMES, type Theme } from "~constants/themes"
 
@@ -25,6 +25,50 @@ const BACKGROUND_STYLES = [
   { id: "ocean", name: "Ocean", color: "#0f172a" }
 ]
 
+interface NavbarProps {
+  activeTab: "engine" | "themes"
+  setActiveTab: (tab: "engine" | "themes") => void
+}
+
+function Navbar({ activeTab, setActiveTab }: NavbarProps) {
+  return (
+    <div className=" mt-1 mb-2 pl-[8px] pr-4 py-1.5 flex items-center justify-between border border-zinc-800/80 bg-zinc-900/30 rounded-full">
+      {/* Top-Level Tabs (Segmented Sliding Toggle Switch) */}
+      <div className="flex p-0.5 bg-[#262421] border border-zinc-800/60 rounded-full items-center relative w-[280px] h-10 select-none">
+        {/* Sliding background pill */}
+        <div
+          className="absolute top-[2px] bottom-[2px] left-[2px] rounded-full bg-accent transition-all duration-300 ease-out shadow-sm"
+          style={{
+            width: "calc(50% - 2px)",
+            transform: activeTab === "engine" ? "translateX(100%)" : "translateX(0)"
+          }}
+        />
+
+        <button
+          onClick={() => setActiveTab("themes")}
+          className={`w-1/2 text-center text-sm font-bold z-10 transition-all duration-200 cursor-pointer select-none border-none bg-transparent outline-none h-full flex items-center justify-center ${
+            activeTab === "themes" ? "text-[#1c1a17]" : "text-zinc-300 hover:text-white"
+          }`}>
+          Board & Pieces
+        </button>
+        <button
+          onClick={() => setActiveTab("engine")}
+          className={`w-1/2 text-center text-sm font-bold z-10 transition-all duration-200 cursor-pointer select-none border-none bg-transparent outline-none h-full flex items-center justify-center ${
+            activeTab === "engine" ? "text-[#1c1a17]" : "text-zinc-300 hover:text-white"
+          }`}>
+          Engine Settings
+        </button>
+      </div>
+
+      <h1
+        className="text-[24px] font-extrabold tracking-tight select-none pr-2 text-accent animate-pulse-slow"
+        style={{ letterSpacing: "-0.01em" }}>
+        Lichess Pro
+      </h1>
+    </div>
+  )
+}
+
 export default function Popup() {
   const [depth, setDepth] = useState(20) // 10-50 moves
   const [time, setTime] = useState(0.5) // 0.5-5 seconds
@@ -33,6 +77,47 @@ export default function Popup() {
   const [customizerTab, setCustomizerTab] = useState<
     "boards" | "pieces" | "background" | "presets"
   >("boards")
+
+  // Refs and styles for customizer tab sliding underline
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
+  const [underlineStyle, setUnderlineStyle] = useState({ left: 0, width: 0 })
+
+  useEffect(() => {
+    if (activeTab === "themes") {
+      const updatePosition = () => {
+        const activeEl = tabRefs.current[customizerTab]
+        if (activeEl) {
+          setUnderlineStyle({
+            left: activeEl.offsetLeft,
+            width: activeEl.offsetWidth
+          })
+        }
+      }
+
+      // Update immediately
+      updatePosition()
+
+      // Set multi-stage timeouts to ensure layout has painted and fonts loaded
+      const timer1 = setTimeout(updatePosition, 30)
+      const timer2 = setTimeout(updatePosition, 150)
+      const timer3 = setTimeout(updatePosition, 400)
+
+      // Update when fonts are fully loaded and layouts settle
+      if (typeof document !== "undefined" && document.fonts) {
+        document.fonts.ready.then(updatePosition)
+      }
+
+      // Window resize listener to keep positions correct
+      window.addEventListener("resize", updatePosition)
+
+      return () => {
+        clearTimeout(timer1)
+        clearTimeout(timer2)
+        clearTimeout(timer3)
+        window.removeEventListener("resize", updatePosition)
+      }
+    }
+  }, [customizerTab, activeTab])
 
   // Active theme states
   const [activeThemeId, setActiveThemeId] = useState("default")
@@ -193,54 +278,14 @@ export default function Popup() {
 
   return (
     <div
-      className="text-white overflow-hidden transition-all duration-300 w-[565px] p-2"
+      className="text-white overflow-hidden transition-all duration-300 w-[576px] p-2"
       style={{
         backgroundColor: "#1c1a17",
         fontFamily: "system-ui, -apple-system, sans-serif",
-        minHeight: "400px"
+        minHeight: "380px"
       }}>
-      {/* Header */}
-      <div className="px-4 pt-4 pb-2">
-        <h1
-          className="text-lg font-black tracking-tight"
-          style={{ color: "#dfc093", letterSpacing: "-0.01em" }}>
-          Lichess Pro
-        </h1>
-
-        {/* Top-Level Tabs */}
-        <div className="flex space-x-4 border-b border-zinc-800/80">
-          <button
-            onClick={() => setActiveTab("themes")}
-            className={`pb-2 text-sm font-semibold transition-all relative ${
-              activeTab === "themes"
-                ? "text-white"
-                : "text-white/40 hover:text-white/70"
-            }`}>
-            Board & Pieces
-            {activeTab === "themes" && (
-              <span
-                style={{ backgroundColor: "#dfc093" }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-              />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("engine")}
-            className={`pb-2 text-sm font-semibold transition-all relative ${
-              activeTab === "engine"
-                ? "text-white"
-                : "text-white/40 hover:text-white/70"
-            }`}>
-            Engine Settings
-            {activeTab === "engine" && (
-              <span
-                style={{ backgroundColor: "#dfc093" }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-              />
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Navbar Component */}
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Tab Content */}
       <div className="px-4 pt-2 pb-2">
@@ -254,8 +299,7 @@ export default function Popup() {
                     Search Depth
                   </label>
                   <span
-                    className="text-base font-bold tabular-nums"
-                    style={{ color: "#dfc093" }}>
+                    className="text-base font-bold tabular-nums text-white/80">
                     {depth}
                   </span>
                 </div>
@@ -266,7 +310,7 @@ export default function Popup() {
                   value={depth}
                   onChange={(e) => setDepth(Number(e.target.value))}
                   className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer slider"
-                  style={{ accentColor: "#dfc093" }}
+                  style={{ accentColor: "var(--accent-dark)" }}
                 />
               </div>
 
@@ -277,8 +321,7 @@ export default function Popup() {
                     Analysis Time
                   </label>
                   <span
-                    className="text-base font-bold tabular-nums"
-                    style={{ color: "#dfc093" }}>
+                    className="text-base font-bold tabular-nums text-white/80">
                     {time.toFixed(1)}s
                   </span>
                 </div>
@@ -290,7 +333,7 @@ export default function Popup() {
                   value={time}
                   onChange={(e) => setTime(Number(e.target.value))}
                   className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer slider"
-                  style={{ accentColor: "#dfc093" }}
+                  style={{ accentColor: "var(--accent-dark)" }}
                 />
               </div>
 
@@ -305,7 +348,7 @@ export default function Popup() {
                     className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none"
                     style={{
                       backgroundColor: showPlayerBestMove
-                        ? "#dfc093"
+                        ? "var(--accent-dark)"
                         : "#3f3e3c"
                     }}>
                     <span
@@ -329,7 +372,7 @@ export default function Popup() {
                     className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none"
                     style={{
                       backgroundColor: showOpponentBestMove
-                        ? "#dfc093"
+                        ? "var(--accent-dark)"
                         : "#3f3e3c"
                     }}>
                     <span
@@ -350,7 +393,7 @@ export default function Popup() {
                     onClick={() => setShowAnalysisBar(!showAnalysisBar)}
                     className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none"
                     style={{
-                      backgroundColor: showAnalysisBar ? "#dfc093" : "#3f3e3c"
+                      backgroundColor: showAnalysisBar ? "var(--accent-dark)" : "#3f3e3c"
                     }}>
                     <span
                       className={`inline-block h-3.5 w-3.5 transform rounded-full transition-all duration-200 ${
@@ -372,24 +415,32 @@ export default function Popup() {
               {/* Left Column: Swatches and Settings */}
               <div className="w-[320px] flex flex-col">
                 {/* Nested Tabs */}
-                <div className="flex space-x-4 mb-3">
+                <div className="flex gap-x-4 mb-3 relative">
                   {(["boards", "pieces", "background", "presets"] as const).map(
                     (tab) => (
                       <button
                         key={tab}
+                        ref={(el) => {
+                          tabRefs.current[tab] = el
+                        }}
                         onClick={() => setCustomizerTab(tab)}
-                        className={`pb-2 text-xs font-semibold uppercase tracking-wider relative transition-all ${
+                        className={`pb-2 px-0 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer border-none bg-transparent outline-none ${
                           customizerTab === tab
                             ? "text-white"
                             : "text-white/40 hover:text-white/70"
                         }`}>
                         {tab}
-                        {customizerTab === tab && (
-                          <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full" />
-                        )}
                       </button>
                     )
                   )}
+                  {/* Sliding Accent Underline */}
+                  <span
+                    className="absolute bottom-0 h-0.5 bg-accent rounded-full transition-all duration-300 ease-out shadow-sm shadow-accent/20"
+                    style={{
+                      left: underlineStyle.left,
+                      width: underlineStyle.width
+                    }}
+                  />
                 </div>
 
                 {/* Left Inner Content (with scrollbar) */}
@@ -405,7 +456,7 @@ export default function Popup() {
                           }}
                           className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all duration-200 cursor-pointer ${
                             stagedBoardId === board.id
-                              ? "border-[#dfc093] scale-[0.96] shadow-lg ring-1 ring-[#dfc093]/40"
+                              ? "border-accent-dark scale-[0.96] shadow-lg ring-1 ring-accent-dark/40"
                               : "border-transparent hover:border-zinc-700"
                           }`}>
                           <div className="w-full h-full grid grid-cols-2 grid-rows-2">
@@ -427,8 +478,7 @@ export default function Popup() {
                               {stagedBoardId === board.id && (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                   <div
-                                    style={{ backgroundColor: "#dfc093" }}
-                                    className="text-[#1c1a17] rounded-full p-0.5 shadow-md flex items-center justify-center w-5 h-5">
+                                    className="bg-accent-dark text-[#1c1a17] rounded-full p-0.5 shadow-md flex items-center justify-center w-5 h-5">
                                     <svg
                                       className="w-3.5 h-3.5"
                                       fill="none"
@@ -462,7 +512,7 @@ export default function Popup() {
                           }}
                           className={`relative flex items-center p-2 rounded-lg border-2 transition-all duration-200 cursor-pointer bg-[#262421]/60 ${
                             stagedPieceId === piece.id
-                              ? "border-[#dfc093] bg-[#262421]/90 shadow-md"
+                              ? "border-accent-dark bg-[#262421]/90 shadow-md"
                               : "border-zinc-800/80 hover:border-zinc-700 hover:bg-[#262421]/85"
                           }`}>
                           <img
@@ -479,8 +529,7 @@ export default function Popup() {
                           </span>
                           {stagedPieceId === piece.id && (
                             <div
-                              style={{ backgroundColor: "#dfc093" }}
-                              className="absolute top-1.5 right-1.5 text-[#1c1a17] rounded-full p-0.5 shadow flex items-center justify-center w-4.5 h-4.5">
+                              className="absolute top-1.5 right-1.5 bg-accent-dark text-[#1c1a17] rounded-full p-0.5 shadow flex items-center justify-center w-4.5 h-4.5">
                               <svg
                                 className="w-3 h-3"
                                 fill="none"
@@ -511,7 +560,7 @@ export default function Popup() {
                           }}
                           className={`relative flex items-center p-3 rounded-lg border-2 transition-all duration-200 cursor-pointer bg-[#262421]/60 ${
                             stagedBackgroundId === bg.id
-                              ? "border-[#dfc093] bg-[#262421]/90 shadow-md"
+                              ? "border-accent-dark bg-[#262421]/90 shadow-md"
                               : "border-zinc-800/80 hover:border-zinc-700 hover:bg-[#262421]/85"
                           }`}>
                           <div
@@ -523,8 +572,7 @@ export default function Popup() {
                           </span>
                           {stagedBackgroundId === bg.id && (
                             <div
-                              style={{ backgroundColor: "#dfc093" }}
-                              className="absolute top-1.5 right-1.5 text-[#1c1a17] rounded-full p-0.5 shadow flex items-center justify-center w-4.5 h-4.5">
+                              className="absolute top-1.5 right-1.5 bg-accent-dark text-[#1c1a17] rounded-full p-0.5 shadow flex items-center justify-center w-4.5 h-4.5">
                               <svg
                                 className="w-3 h-3"
                                 fill="none"
@@ -566,7 +614,7 @@ export default function Popup() {
                             onClick={() => handlePresetSelect(preset.id)}
                             className={`relative flex items-center p-2.5 rounded-lg border-2 transition-all duration-200 cursor-pointer w-full text-left bg-[#262421]/60 ${
                               stagedThemeId === preset.id
-                                ? "border-[#dfc093] bg-[#262421]/90 shadow-md"
+                                ? "border-accent-dark bg-[#262421]/90 shadow-md"
                                 : "border-zinc-800/80 hover:border-zinc-700 hover:bg-[#262421]/85"
                             }`}>
                             {/* 2x2 board swatch */}
@@ -598,8 +646,7 @@ export default function Popup() {
                             </div>
                             {stagedThemeId === preset.id && (
                               <div
-                                style={{ backgroundColor: "#dfc093" }}
-                                className="text-[#1c1a17] rounded-full p-0.5 shadow flex items-center justify-center w-4.5 h-4.5 ml-2">
+                                className="text-[#1c1a17] bg-accent-dark rounded-full p-0.5 shadow flex items-center justify-center w-4.5 h-4.5 ml-2">
                                 <svg
                                   className="w-3 h-3"
                                   fill="none"
@@ -632,12 +679,12 @@ export default function Popup() {
                     onClick={isDirty ? handleSave : undefined}
                     className={`flex-1 font-bold py-2 px-4 rounded-md border-none text-xs transition-all duration-200 ${
                       isDirty
-                        ? "cursor-pointer active:scale-[0.98] shadow-md text-[#1c1a17] hover:bg-[#e8cca4] shadow-[#dfc093]/10"
+                        ? "cursor-pointer active:scale-[0.98] shadow-md text-[#1c1a17] hover:bg-accent/90 shadow-accent/10"
                         : "text-zinc-500 cursor-default opacity-90"
                     }`}
                     style={{
                       backgroundColor: isDirty
-                        ? "#dfc093"
+                        ? "var(--accent)"
                         : "rgba(223, 192, 147, 0.08)"
                     }}>
                     {isDirty ? "Save changes" : "Changes saved"}
@@ -751,7 +798,7 @@ export default function Popup() {
           width: 15px;
           height: 15px;
           border-radius: 50%;
-          background: #dfc093;
+          background: var(--accent-dark);
           cursor: pointer;
           border: 2px solid #1c1a17;
           box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -759,14 +806,14 @@ export default function Popup() {
         }
         .slider::-webkit-slider-thumb:hover {
           transform: scale(1.15);
-          background: #f0d9b5;
+          background: var(--accent);
         }
 
         .slider::-moz-range-thumb {
           width: 15px;
           height: 15px;
           border-radius: 50%;
-          background: #dfc093;
+          background: var(--accent-dark);
           cursor: pointer;
           border: 2px solid #1c1a17;
           box-shadow: 0 1px 3px rgba(0,0,0,0.3);

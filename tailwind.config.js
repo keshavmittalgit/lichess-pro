@@ -2,7 +2,14 @@
 module.exports = {
   content: ["./**/*.{ts,tsx,js,jsx}", "!./node_modules/**", "!./build/**"],
   theme: {
-    extend: {}
+    extend: {
+      colors: {
+        accent: {
+          DEFAULT: "var(--accent, #e8cca4)",
+          dark: "var(--accent-dark, #dfc093)"
+        }
+      }
+    }
   },
   plugins: []
 }
